@@ -22,7 +22,6 @@ plot_png = os.path.join(main_dir, "cosine_score_dist.png")
 conf_list = ["ESEM", "EASE", "SANER"]
 
 
-
 # Converts title and abstract to vector using BERT
 def convert_to_vector(title_and_abstract):
     tokenized_text = BERT_tokenizer(title_and_abstract, return_tensors="pt", truncation=True, padding=True).to(device)
@@ -52,7 +51,6 @@ for conf in conf_list:
         
         paper_vector = convert_to_vector(concat_title_abstract(paper_json)) # converts the title and abstract to vector using BERT
 
-
         recommendation = paper_json.get("related", []) 
 
         for rec in recommendation:
@@ -67,4 +65,51 @@ for conf in conf_list:
                 "rec_title":    rec.get("title", ""),
                 "cosine_score": float(cosine_score),
             })
+
+
+# converts the cosine scores to DataFrame for a plot and save it as CSV
+df = pd.DataFrame(cosine_scores)
+df.to_csv(output_dir, index=False)
+
+
+# plots the dictriubution of cosine scores for ESEM, EASE, and SANER
+fig, ax = plt.subplots(figsize=(8, 5))
+
+group_by_conf =[]
+
+# groups the cosine scores by conference for the plot 
+for conf in conf_list:
+    c_scores =df[df["conference"] == conf]["cosine_score"].values
+    group_by_conf.append(c_scores)
+
+colors = ["#1f78b5", "#059635", "#fc6f28"]
+
+box_plot= ax.boxplot(group_by_conf, labels=conf_list,patch_artist=True, medianprops=dict(color="black", linewidth=2.5) ) 
+
+legend = []
+
+# the loop assigns colors, transparency, and legend
+for box, color, conf in zip(box_plot["boxes"], colors, conf_list): 
+    box.set_facecolor(color) #sets colors for conferces
+    box.set_alpha(0.7) # add transparency 
+    legend.append(plt.Rectangle((0, 0), 1, 1, fc=color, alpha=0.7, label=conf)) #add legend
+
+legend.append(plt.Line2D([0], [0], color="black", linewidth=2.5, label="Median")) # median line for box plot
+
+
+ax.set_xlabel("Conference", fontsize=11)
+ax.set_ylabel("Cosine Similarity Score", fontsize=11)
+ax.set_title("Cosine Similarity Score Distribution of ESEM, EASE, and SANER", fontsize=12)
+ax.set_ylim(0, 1)
+ax.legend(handles=legend, loc="lower right")
+ax.grid(axis="y", linestyle="--", alpha=0.5)
+
+plt.tight_layout()
+plt.savefig(plot_png, dpi=300)
+plt.show()
+
+
+
+
+
 
